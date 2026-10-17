@@ -1,0 +1,2 @@
+Impot TRUSSES.ifc or TRUSSES.obj or TRUSSES.dxf file
+click "Analyze all trusses"

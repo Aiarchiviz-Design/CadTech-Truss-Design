@@ -1,0 +1,8 @@
+{
+  "name": "Remix AI Truss Design",
+  "description": "Professional structural analysis, timber roof truss generation, EWP floor framing, and whole-building CAD engineering studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

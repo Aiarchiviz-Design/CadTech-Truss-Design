@@ -1,0 +1,167 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>
+window.addEventListener('error',function(e){var m=(e&&e.message)?String(e.message):'';if(m.includes('WebSocket')||m.includes('createWebSocketModuleRunnerTransport')||m.includes('@vite/client')||m.includes('ResizeObserver')){e.stopImmediatePropagation();e.preventDefault();return true;}},true);
+window.addEventListener('unhandledrejection',function(e){var r=e&&e.reason?(e.reason.message||String(e.reason)):'';if(r.includes('WebSocket')||r.includes('createWebSocketModuleRunnerTransport')||r.includes('@vite/client')||r.includes('ResizeObserver')){e.stopImmediatePropagation();e.preventDefault();}},true);
+</script><title>Remix AI Truss Design Studio — Roof Assembly</title><meta name="description" content="Professional structural analysis, timber roof truss generation, EWP floor framing, and whole-building CAD engineering studio."><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23121e29'/%3E%3Cpath d='M4 25L16 6l12 19H4l12-10 12 10M16 6v19' fill='none' stroke='%23c4ed79' stroke-width='2'/%3E%3C/svg%3E"><link rel="stylesheet" href="roof.css"><script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script></head><body>
+<header>
+  <a class="brand" href="./"><span>△</span> CadTech <small>ROOF ASSEMBLY</small></a>
+  <div class="project">
+    <strong id="project-name">No Model Loaded</strong>
+    <span id="dimensions">Import CAD (.dxf) or 3D model (.obj / .ifc)</span>
+  </div>
+  <div class="header-nav-links">
+    <a href="https://drive.google.com/drive/folders/19bcFpRo1Ov-7yRB5GNPlpekVD0GMJBWa?usp=drive_link" target="_blank" rel="noopener noreferrer" class="header-link-btn" id="header-link-samples" title="Download CAD & Truss sample files from Google Drive">📁 Samples</a>
+    <a href="https://www.youtube.com/watch?v=kB9oWMouudU" target="_blank" rel="noopener noreferrer" class="header-link-btn" id="header-link-tutorial" title="Watch CadTech roof truss design tutorial on YouTube">📺 Tutorial</a>
+  </div>
+  <div class="header-spacer"></div>
+  <div class="unit-select-box">
+    <label for="file-units" style="margin:0;font-weight:600">Display:</label>
+    <select id="file-units" title="Choose display units for dimensions and elevations">
+      <option value="ft-in" selected>Ft & In (e.g. 24' 6")</option>
+      <option value="ft">Decimal Feet (ft)</option>
+      <option value="in">Inches (in)</option>
+    </select>
+  </div>
+  <div class="header-hud" id="header-hud">
+    <div class="hud-pill" id="hud-unity">Stress: <strong id="hud-unity-val">—</strong></div>
+    <div class="hud-pill">Span: <strong id="hud-span-val">—</strong></div>
+    <div class="hud-pill">Lumber: <strong id="hud-bf-val">—</strong></div>
+    <div class="hud-pill">CO₂: <strong id="hud-co2-val">—</strong></div>
+  </div>
+  <button id="btn-open-cert" class="secondary" title="Jurisdiction code & engineering compliance checklist">🏛️ Certification</button>
+  <button id="takeoff" title="Cut list, stock boards and board feet">Wood take-off</button>
+  <button id="export">Export model</button>
+</header>
+<div class="shell"><aside class="left"><div id="message" role="status" aria-live="polite"></div><div class="section-title">PROJECT GEOMETRY <span>01</span></div><label class="drop" id="drop"><input type="file" id="file" accept=".obj,.ifc,.dxf"><strong>Import rafter model or CAD roof plan</strong><span>OBJ, IFC or ASCII DXF · up to 25 MB</span></label>
+<div class="sample-links-bar" style="display:flex;gap:8px;margin:6px 0 10px">
+  <a href="https://drive.google.com/drive/folders/19bcFpRo1Ov-7yRB5GNPlpekVD0GMJBWa?usp=drive_link" target="_blank" rel="noopener noreferrer" class="sample-quick-link" style="flex:1;text-align:center;padding:5px 8px;font-size:11.5px;font-weight:600;color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;text-decoration:none">📁 Samples (Drive)</a>
+  <a href="https://www.youtube.com/watch?v=kB9oWMouudU" target="_blank" rel="noopener noreferrer" class="sample-quick-link" style="flex:1;text-align:center;padding:5px 8px;font-size:11.5px;font-weight:600;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:5px;text-decoration:none">📺 Tutorial (YouTube)</a>
+</div>
+
+<div class="fields"><label>OBJ units<select id="units"><option value="0.0254" selected>Inches (in)</option><option value="0.3048">Feet (ft)</option></select></label><label>Up axis<select id="axis"><option>Z</option><option>Y</option></select></label></div>
+<div class="cad-options" id="cad-options" hidden>
+  <div class="section-title">CAD ROOF INPUT <span>DXF</span></div>
+  <div class="fields">
+    <label>Roof layer<select id="roof-layer"></select></label>
+    <label>Truss generation layer<select id="truss-layer"></select></label>
+    <label>Roof pitch <em>deg</em><input id="roof-angle" type="number" min="1" max="78" step="0.5" value="22.5"></label>
+    <label>CAD file units<select id="cad-units"><option value="auto" selected>Auto-detect from DXF</option><option value=".0254">Inches (in)</option><option value=".3048">Feet (ft)</option></select></label>
+  </div>
+  <button id="rebuild-cad" class="subtle" style="margin-top:4px">Rebuild CAD roof</button>
+</div>
+
+<div class="generation-header">
+  <div class="section-title">GENERATION <span>02</span></div>
+  <div class="unit-toggle" id="gen-unit-toggle" role="group" aria-label="Input units">
+    <button type="button" class="unit-toggle-btn active" id="unit-btn-in" data-unit="in">Imperial (in)</button>
+    <button type="button" class="unit-toggle-btn" id="unit-btn-mm" data-unit="mm">Metric (mm)</button>
+  </div>
+</div>
+<div class="fields">
+  <label id="label-heel">Heel / bottom-chord drop <em id="heel-unit-label">(inches)</em><input type="number" id="heel" min="2" max="48" step="0.5" value="10"><small id="heel-helper">10.0" (254 mm) vertical heel depth from bearing plate</small></label>
+  <label id="label-panel">Panel length <em id="panel-unit-label">(inches)</em><input type="number" id="panel" min="12" max="120" step="1" value="48"><small id="panel-helper">48" (4.0 ft) target top-chord panel spacing</small></label>
+  <label id="label-overhang">Roof overhang <em id="overhang-unit-label">(inches)</em><input type="number" id="roof-overhang" min="0" max="72" step="1" value="24"><small id="overhang-helper">24.0" (2'-0") eave overhang past bearing plate</small></label>
+  <label id="label-overhang">Roof overhang <em id="overhang-unit-label">(inches)</em><input type="number" id="roof-overhang" min="0" max="72" step="1" value="24"><small id="overhang-helper">24.0" (2'-0") eave overhang past bearing plate</small></label>
+  <label id="label-gen-units">Input units <em id="active-unit-badge">Imperial</em><select id="gen-units"><option value="in" selected>Imperial (in)</option><option value="mm">Metric (mm)</option></select><small id="gen-units-helper">Switches Heel, Panel &amp; Overhang units</small></label>
+</div>
+<label class="check"><input id="hips" type="checkbox" checked>Propose missing hip carriers</label>
+<div class="topology-panel"><div class="section-title">TRUSS TOPOLOGY <span>ARCHITECT</span></div><div class="topology-grid" id="topology-grid"><div class="topology-card active" data-topo="Fink"><strong>Fink (W)</strong><small>Residential 20–50 ft</small></div><div class="topology-card" data-topo="Howe"><strong>Howe (M)</strong><small>Heavy snow/tile</small></div><div class="topology-card" data-topo="Pratt"><strong>Pratt (N)</strong><small>Low slope / commercial</small></div><div class="topology-card" data-topo="Scissors"><strong>Scissors</strong><small>Vaulted cathedral</small></div><div class="topology-card" data-topo="Attic"><strong>Attic / Loft</strong><small>Habitable bonus room</small></div><div class="topology-card" data-topo="KingPost"><strong>King Post</strong><small>Short span 12–25 ft</small></div><div class="topology-card" data-topo="QueenPost"><strong>Queen Post</strong><small>Collar beam 20–35 ft</small></div><div class="topology-card" data-topo="Warren"><strong>Warren</strong><small>Alternating diagonals</small></div><div class="topology-card" data-topo="Monopitch"><strong>Monopitch</strong><small>Modern shed roof</small></div></div></div>
+<button class="primary" id="generate" style="margin-top:12px">Generate complete roof</button>
+<div class="section-title">TRUSS SCHEDULE <span id="count">—</span></div>
+<div class="species-selector-row" style="margin: 8px 0 6px;">
+  <label for="timber-species" style="font-size:11px;color:#475569;display:block;margin-bottom:2px">Timber Species &amp; Density:</label>
+  <select id="timber-species" style="width:100%;padding:4px 6px;border-radius:4px;border:1px solid #cbd5e1;background:#ffffff;font-size:11.5px;color:#0f172a">
+    <option value="douglas_fir" selected>Douglas Fir-Larch (530 kg/m³ · 33.1 lb/ft³)</option>
+    <option value="southern_pine">Southern Yellow Pine (570 kg/m³ · 35.6 lb/ft³)</option>
+    <option value="spf">Spruce-Pine-Fir (SPF) (450 kg/m³ · 28.1 lb/ft³)</option>
+    <option value="hem_fir">Hem-Fir (470 kg/m³ · 29.3 lb/ft³)</option>
+    <option value="lvl">EWP / LVL Structural (550 kg/m³ · 34.3 lb/ft³)</option>
+  </select>
+</div>
+<div id="schedule-summary" style="font-size:11.5px;color:#0f172a;margin:6px 0;padding:6px 8px;background:#f1f5f9;border-radius:5px;border-left:3px solid #2563eb;font-weight:600">Total Self-Weight: —</div>
+<label class="sr-only" for="search">Find truss</label><input type="search" id="search" placeholder="Find truss ID or type"><div id="schedule"></div><a class="analysis-link" href="#analysis-workspace">Open selected-truss analysis</a></aside>
+<main><div class="layers-panel top-layers-panel"><div class="section-title">DISPLAY LAYERS</div><div class="layers"><label><input type="checkbox" data-layer="top" checked>Top chords</label><label><input type="checkbox" data-layer="bottom" checked>Bottom chords</label><label><input type="checkbox" data-layer="web" checked>Webs</label><label><input type="checkbox" data-layer="rafters">Original rafters</label><label><input type="checkbox" data-layer="roof">Roof surface</label><label><input type="checkbox" data-layer="labels">Truss IDs</label><label><input type="checkbox" data-layer="walls" checked>Walls</label></div><div class="display-controls"><label>Color<select id="color"><option value="type">Truss family</option><option value="role">Member role</option><option value="wire">Wireframe</option></select></label><label>Section cut X<input type="range" id="cut" min="0" max="100" value="100" aria-label="Section cut X"></label></div></div><div class="workspace-heading"><div><div class="eyebrow">YOUR RAFTERS. ONE COMPLETE ROOF.</div><h1>Roof framing workspace</h1></div><div id="coverage" class="coverage">Ready for CAD or 3D import</div></div><div class="toolbar"><div class="view-tabs" role="tablist" aria-label="Viewport"><button data-view="iso" class="active" role="tab" aria-selected="true">3D model</button><button data-view="plan" role="tab">Plan</button><button data-view="front" role="tab">Front</button><button data-view="side" role="tab">Side</button><button data-view="split" role="tab">Split view</button></div><div class="view-actions"><button id="fit" title="Fit whole model">Fit</button><button id="full" title="Full-screen viewport">⛶</button></div></div><section class="viewports" id="viewports"><div class="model-pane"><div class="viewport-meta"><strong id="view-title">FULL ROOF / PERSPECTIVE</strong><span id="view-subtitle">Solid dimensional-lumber members · wood truss sections</span></div><div id="three" style="position:relative"></div><div class="compass"><button data-orient="plan">TOP</button><button data-orient="front">FRONT</button><button data-orient="iso">ISO</button></div><div class="nav-hint">Drag to orbit · right-drag to pan · scroll to zoom</div><div class="view-scale">Z ↑ &nbsp; Feet &amp; Inches</div></div><div class="drawing-pane" id="drawing-pane" hidden><div class="drawing-head"><strong id="drawing-title">SELECTED TRUSS</strong><button id="drawing-fit">Fit drawing</button></div><div class="drawing-controls-bar" style="margin-top:48px"><button id="draw-mode-geom" class="active">📐 Geometry</button><button id="draw-mode-fea">⚡ Stress Heatmap (FEA)</button><button id="draw-mode-plates">🔩 Connector Plates</button><button id="draw-mode-deflect">〰️ Deflection</button><div class="legend-items" id="draw-legend" hidden><span><i class="legend-dot comp"></i>Compression</span><span><i class="legend-dot tens"></i>Tension</span><span><i class="legend-dot plate"></i>Connector Plate</span></div></div><div style="position:relative;width:100%;height:calc(100% - 85px)"><svg id="drawing" viewBox="0 0 800 460" aria-label="Dimensioned truss elevation"></svg><div id="member-hud" class="member-hover-hud" hidden></div></div><div class="drawing-note">Orthographic elevation · scroll to zoom · drag to pan · hover member for FEA metrics</div></div></section><div class="family-bar" id="families"></div><div class="bottom-panels"><div class="selection-panel"><div class="section-title">SELECTED TRUSS <button id="isolate" aria-pressed="false">Isolate</button></div><div id="selection">Select a truss in the model or schedule.</div></div></div>
+<div class="engineering"><span>ⓘ</span><p><strong>CadTech design-document workflow.</strong> Run analysis before issuing drawings. Member sizing, reactions and load cases are documented; connector plates, permanent bracing, truss-to-truss connections and final code certification require qualified engineering verification before construction.</p></div></main></div>
+<dialog id="takeoff-dialog"><button type="button" id="close-takeoff" aria-label="Close take-off">×</button><div class="eyebrow">MATERIAL</div><h2>Wood take-off</h2><div id="takeoff-body"></div><div id="takeoff-downloads"></div></dialog>
+<dialog id="export-dialog"><button type="button" id="close-export" aria-label="Close exports">×</button><div class="eyebrow">COMPLETE ASSEMBLY</div><h2>Export this roof</h2><p>Geometry, truss schedule, analysis results and CadTech design documents. Final issue requires engineering review of connections, bracing and project-specific code inputs.</p><div id="downloads"></div></dialog>
+<dialog id="cert-dialog">
+  <button type="button" id="close-cert" aria-label="Close engineering certification">×</button>
+  <div class="eyebrow">JURISDICTION CODE & COMPLIANCE VERIFICATION</div>
+  <h2 style="margin:4px 0 10px;font:600 22px 'Manrope',sans-serif;color:#0f172a">Engineering Certification</h2>
+  <p class="dialog-sub">Select your local jurisdiction building code standard and structural load parameters to run the automated engineering compliance checklist for this roof structure.</p>
+  
+  <div class="cert-container">
+    <div class="cert-inputs-panel">
+      <h3>🏛️ Jurisdiction & Design Loads</h3>
+      <div class="fields-grid">
+        <label>Governing Code Standard
+          <select id="cert-code">
+            <option value="US-IBC2024" selected>US — IBC 2024 / ASCE 7-22 / NDS 2024</option>
+            <option value="US-IBC2021">US — IBC 2021 / ASCE 7-16 / NDS 2018</option>
+            <option value="CA-NBCC2020">Canada — NBCC 2020 / CSA O86-19</option>
+            <option value="AU-NCC2022">Australia — NCC 2022 / AS 1720.1</option>
+            <option value="UK-EUROCODE5">UK & EU — Eurocode 5 / BS EN 1995</option>
+            <option value="CUSTOM">Custom Jurisdiction Code</option>
+          </select>
+        </label>
+        <label>Local Jurisdiction / AHJ
+          <input id="cert-ahj" value="City of Seattle SDCI / Local Building Dept">
+        </label>
+        <label>Professional Engineer (P.E.) Name
+          <input id="cert-pename" value="Licensed Professional Engineer, P.E.">
+        </label>
+        <label>P.E. License / Seal Number
+          <input id="cert-pallicense" value="PE-849201">
+        </label>
+        <label>Ground Snow Load (psf)
+          <input id="cert-snow" type="number" value="25" min="0" max="300">
+        </label>
+        <label>Basic Wind Speed & Exposure
+          <input id="cert-wind" value="115 mph (Exposure C)">
+        </label>
+        <label>Roof Dead Load (psf)
+          <input id="cert-dead" type="number" value="12" min="1" max="100">
+        </label>
+        <label>Roof Live Load (psf)
+          <input id="cert-live" type="number" value="20" min="0" max="100">
+        </label>
+        <label>Seismic Design Category (SDC)
+          <select id="cert-sdc">
+            <option value="A">SDC A — Low Seismic Risk</option>
+            <option value="B">SDC B — Moderate</option>
+            <option value="C" selected>SDC C — Moderate Seismic</option>
+            <option value="D">SDC D — High Seismic Zone</option>
+            <option value="E">SDC E / F — Severe Seismic</option>
+          </select>
+        </label>
+        <label>Deflection Limit Criteria
+          <select id="cert-defl">
+            <option value="180">L / 180 (Roof with no ceiling)</option>
+            <option value="240">L / 240 (Flexible finish ceiling)</option>
+            <option value="360" selected>L / 360 (Plaster / Gypsum ceiling)</option>
+            <option value="480">L / 480 (High precision ceiling)</option>
+          </select>
+        </label>
+        <label>Bearing Plate Fc_perp (psi)
+          <input id="cert-fcperp" type="number" value="565" min="200" max="2000">
+        </label>
+        <label>Bearing Plate Width
+          <select id="cert-platewidth">
+            <option value="3.5">2x4 Bearing Plate (3 ½" / 3.5 in)</option>
+            <option value="5.5" selected>2x6 Bearing Plate (5 ½" / 5.5 in)</option>
+            <option value="7.25">2x8 Bearing Plate (7 ¼" / 7.25 in)</option>
+          </select>
+        </label>
+      </div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+        <button id="cert-recalculate" class="primary" style="padding:11px">✓ Calculate Compliance</button>
+        <button id="cert-export-pdf" style="background:#15803d;color:#ffffff;font-weight:700;border:1px solid #16a34a;padding:11px;border-radius:6px">📄 Export Certified Report (PDF)</button>
+      </div>
+    </div>
+
+    <div id="cert-checklist-results" class="cert-results-panel">
+      <!-- Compliance Checklist Rendered Here -->
+    </div>
+  </div>
+</dialog>
+<script type="module" src="assembly-app.js"></script></body></html>
+

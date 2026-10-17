@@ -1,0 +1,10 @@
+import fs from 'fs';
+import {inspectDXF,parseRoofDXF} from './dxf-importer.js';
+import {assembleRoof} from './roof.js';
+const text=fs.readFileSync('./sample-roof-plan.dxf','utf8');
+const i=inspectDXF(text); console.log('layers',i.layers,'units',i.insunits,'entities',i.entities.length);
+const s=parseRoofDXF(text,{roofLayer:'ROOF',trussLayer:'WALL',pitchDeg:22.5,unit:'auto'});
+console.log('axes',s.axes.length,'bounds',s.bounds,'origin',s.origin);
+const a=assembleRoof(s,{heel:.25,panel:1.2,inferHips:true});
+console.log('trusses',a.trusses.length,'counts',a.counts,'covered',a.covered,'/',a.sourceAxisCount);
+if(!a.trusses.length)process.exit(2);
